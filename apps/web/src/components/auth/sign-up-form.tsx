@@ -1,12 +1,11 @@
-import { authClient } from "@/lib/auth-client";
 import { useForm } from "@tanstack/react-form";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import z from "zod";
-import Loader from "./loader";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import Spinner from "../blocks/Spinner";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 
 export default function SignUpForm({
 	onSwitchToSignIn,
@@ -30,9 +29,9 @@ export default function SignUpForm({
 					name: value.name,
 				},
 				{
-					onSuccess: () => {
-						router.push("/dashboard");
+					onSuccess: async () => {
 						toast.success("Sign up successful");
+						router.push("/dashboard");
 					},
 					onError: (error) => {
 						toast.error(error.error.message || error.error.statusText);
@@ -50,12 +49,19 @@ export default function SignUpForm({
 	});
 
 	if (isPending) {
-		return <Loader />;
+		return <Spinner />;
 	}
 
 	return (
-		<div className="mx-auto w-full mt-10 max-w-md p-6">
-			<h1 className="mb-6 text-center text-3xl font-bold">Create Account</h1>
+		<div className="w-full max-w-md font-jakarta">
+			<div className="">
+				<h1 className="text-center font-semibold text-3xl font-outfit">
+					Let's get you <span className="tracking-normal">started!</span>
+				</h1>
+				<p className="text-center text-muted-foreground/80 font-semibold tracking-tight">
+					Your first step to understand yourself better.
+				</p>
+			</div>
 
 			<form
 				onSubmit={(e) => {
@@ -63,18 +69,20 @@ export default function SignUpForm({
 					e.stopPropagation();
 					form.handleSubmit();
 				}}
-				className="space-y-4"
+				className="space-y-4 p-6"
 			>
 				<div>
 					<form.Field name="name">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name}>Name</Label>
+								{/* Label removed to match Sign-In UI */}
 								<Input
 									id={field.name}
 									name={field.name}
 									value={field.state.value}
+									placeholder="Enter your name"
 									onBlur={field.handleBlur}
+									autoComplete="name"
 									onChange={(e) => field.handleChange(e.target.value)}
 								/>
 								{field.state.meta.errors.map((error) => (
@@ -91,13 +99,15 @@ export default function SignUpForm({
 					<form.Field name="email">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name}>Email</Label>
+								{/* Label removed to match Sign-In UI */}
 								<Input
 									id={field.name}
 									name={field.name}
 									type="email"
 									value={field.state.value}
+									placeholder="Enter your email"
 									onBlur={field.handleBlur}
+									autoComplete="email"
 									onChange={(e) => field.handleChange(e.target.value)}
 								/>
 								{field.state.meta.errors.map((error) => (
@@ -114,13 +124,15 @@ export default function SignUpForm({
 					<form.Field name="password">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name}>Password</Label>
+								{/* Label removed to match Sign-In UI */}
 								<Input
 									id={field.name}
 									name={field.name}
 									type="password"
 									value={field.state.value}
+									placeholder="Create a password"
 									onBlur={field.handleBlur}
+									autoComplete="new-password"
 									onChange={(e) => field.handleChange(e.target.value)}
 								/>
 								{field.state.meta.errors.map((error) => (
@@ -140,20 +152,19 @@ export default function SignUpForm({
 							className="w-full"
 							disabled={!state.canSubmit || state.isSubmitting}
 						>
-							{state.isSubmitting ? "Submitting..." : "Sign Up"}
+							{state.isSubmitting ? "Signing Up..." : "Sign Up"}
 						</Button>
 					)}
 				</form.Subscribe>
 			</form>
 
-			<div className="mt-4 text-center">
-				<Button
-					variant="link"
+			<div className="flex-center text-center">
+				<div
 					onClick={onSwitchToSignIn}
-					className="text-indigo-600 hover:text-indigo-800"
+					className="text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer font-jakarta underline-offset-1"
 				>
 					Already have an account? Sign In
-				</Button>
+				</div>
 			</div>
 		</div>
 	);
