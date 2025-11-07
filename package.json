@@ -1,0 +1,40 @@
+{
+  "name": "contxt",
+  "private": true,
+  "type": "module",
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "zod": "^4.1.12",
+      "better-auth": "^1.3.28",
+      "dotenv": "^17.2.2",
+      "tsdown": "^0.15.5"
+    }
+  },
+  "scripts": {
+    "check": "biome check --write .",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:native": "turbo -F native dev",
+    "dev:web": "turbo -F web dev",
+    "db:push": "turbo -F @contxt/db db:push",
+    "db:studio": "turbo -F @contxt/db db:studio",
+    "db:generate": "turbo -F @contxt/db db:generate",
+    "db:migrate": "turbo -F @contxt/db db:migrate"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "@biomejs/biome": "^2.2.0",
+    "tsdown": "^0.15.5",
+    "@types/node": "^22.13.11"
+  },
+  "packageManager": "bun@1.3.0"
+}
