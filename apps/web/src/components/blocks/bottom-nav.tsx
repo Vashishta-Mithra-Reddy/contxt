@@ -5,10 +5,6 @@ import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import {
   LayoutDashboard,
-  Utensils,
-  Smile,
-  TrendingUp,
-  Settings,
 } from "lucide-react";
 import React from "react";
 
@@ -21,10 +17,6 @@ export default function BottomNav() {
     Icon: React.ComponentType<{ className?: string }>;
   }[] = [
     { href: "/dashboard", label: "Overview", Icon: LayoutDashboard },
-    { href: "/dashboard/food-log", label: "Food Log", Icon: Utensils },
-    { href: "/dashboard/reflection", label: "Reflect", Icon: Smile },
-    { href: "/dashboard/insights", label: "Insights", Icon: TrendingUp },
-    { href: "/dashboard/settings", label: "Settings", Icon: Settings },
   ];
 
   return (
