@@ -16,6 +16,12 @@ export default function SignInForm({
 	const router = useRouter();
 	const { isPending } = authClient.useSession();
 
+	const signInWithGoogle = async () => {
+		await authClient.signIn.social({
+			provider: "google",
+		});
+	};
+
 	const form = useForm({
 		defaultValues: {
 			email: "",
@@ -57,9 +63,7 @@ export default function SignInForm({
 			<Button
 				variant="outline"
 				className="mb-4 w-full"
-				onClick={() => {
-					authClient.signIn.social({ provider: "google" });
-				}}
+				onClick={() => signInWithGoogle()}
 			>
 				Sign in with Google
 			</Button>
