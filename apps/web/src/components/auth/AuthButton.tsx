@@ -32,7 +32,7 @@ export default function AuthButton({ className }: { className?: string }) {
 			className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 border-white/40 px-6 py-3 text-center text-white transition-all duration-500 hover:bg-white/20 hover:text-white/90 font-jakarta ${className || ""}`}
 		>
 			{/* <span className="font-medium text-base"> */}
-				"Go to Dashboard"
+				Go to Dashboard
 			{/* </span> */}
 		</Link>
 	);

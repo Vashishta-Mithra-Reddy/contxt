@@ -57,6 +57,10 @@ body {
 	--sidebar-ring: oklch(93.403% 0.00011 271.152);
 
 	--header: oklch(96.715% 0.00011 271.152);
+
+	
+	--sb-track-color: hsl(0 0% 90%);
+	--sb-thumb-color: hsl(0 0% 45%);
 }
 
 .dark {
@@ -112,6 +116,10 @@ body {
     --sidebar-ring: oklch(0.7 0 0);
 
 	--header: oklch(0.18 0 0);
+
+
+	--sb-track-color: hsl(0 0% 20%);
+	--sb-thumb-color: hsl(0 0% 65%);
 }
 
 @theme inline {
@@ -151,6 +159,8 @@ body {
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-header: var(--header);
+	--color-sb-track-color: var(--sb-track-color);
+	--color-sb-thumb-color: var(--sb-thumb-color);
 }
 
 @layer base {
@@ -175,4 +185,40 @@ body {
 	.flex-col-center {
 		@apply flex flex-col items-center justify-center;
 	}
+}
+
+
+body {
+  --sb-track-color: var(--color-sb-track-color);
+  --sb-thumb-color: var(--color-sb-thumb-color);
+  --sb-size: 4px;
+}
+body::-webkit-scrollbar {
+  width: var(--sb-size);
+}
+body::-webkit-scrollbar-track {
+  background: var(--sb-track-color);
+  border-radius: 10px;
+}
+body::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb-color);
+  border-radius: 10px;
+}
+
+/* Firefox */
+@supports not selector(::-webkit-scrollbar) {
+body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
+  }
+}
+
+/* Hide scrollbar but allow scrolling */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }

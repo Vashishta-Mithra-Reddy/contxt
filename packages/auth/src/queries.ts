@@ -9,6 +9,8 @@ import {
   ApiKeyQueries,
   QueryLogQueries,
   WebhookQueries,
+  ensureProjectAccess,
+  requirePermission,
 } from "@contxt/db";
 
 /**
@@ -108,6 +110,23 @@ export async function listChunksByDocument(
   return ChunkQueries.listChunksByDocument(ctx, projectId, documentId);
 }
 
+export async function insertChunks(headers: Headers, projectId: string, rows: Array<{
+  documentId: string | null;
+  chunkIndex: number;
+  chunkText: string;
+  embedding: number[];
+  metadata?: Record<string, any>;
+  contentHash?: string;
+}>) {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  return ChunkQueries.insertChunks(ctx, projectId, rows);
+}
+
+export async function deleteChunksForDocument(headers: Headers, projectId: string, documentId: string) {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  return ChunkQueries.deleteChunksForDocument(ctx, projectId, documentId);
+}
+
 /**
  * Sync Queue
  */
@@ -173,4 +192,29 @@ export async function listWebhooks(headers: Headers, projectId: string) {
   const ctx = await deriveAuthContextFromHeaders(headers);
   if (ctx.kind !== "session") throw new Error("Session required");
   return WebhookQueries.listWebhooks(ctx, projectId);
+}
+
+export async function listPendingSyncGlobal(headers: Headers) {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  return SyncQueueQueries.listPendingSyncGlobal(ctx);
+}
+
+export async function searchChunksByEmbedding(
+  headers: Headers,
+  projectId: string,
+  embedding: number[],
+  topK: number,
+  threshold?: number,
+) {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  return ChunkQueries.searchChunksByEmbedding(ctx, projectId, embedding, topK, threshold);
+}
+
+export async function assertProjectAccess(headers: Headers, projectId: string, required?: "read" | "write" | "embed" | "admin") {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  const { permissions } = await ensureProjectAccess(ctx, projectId);
+  if (required) {
+    requirePermission(permissions, required);
+  }
+  return true;
 }

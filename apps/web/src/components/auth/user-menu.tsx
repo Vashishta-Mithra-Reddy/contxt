@@ -50,7 +50,7 @@ export default function UserMenu({ className }: { className?: string }) {
 				</div>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
-				className="w-56 border-2 border-foreground/10 dark:border-foreground/10 bg-card font-jakarta"
+				className="w-56 border-2 border-foreground/10 dark:border-foreground/10 bg-card font-nippo"
 				align="end"
 			>
 				<DropdownMenuLabel className="font-normal">

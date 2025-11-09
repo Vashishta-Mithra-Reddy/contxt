@@ -53,7 +53,7 @@ export default function Header() {
 
 	return (
 		<motion.header
-			className="w-full fixed top-0 md:top-6 left-1/2 -translate-x-1/2 z-40 backdrop-blur-3xl transition-all duration-700"
+			className="w-full fixed top-0 md:top-6 left-1/2 -translate-x-1/2 z-40 backdrop-blur-3xl transition-all duration-700 bg-header"
 			style={{ borderRadius: headerRadius, maxWidth: headerMaxWidth }}
 		>
 			{/* Color layer: transparent initially, fades in on scroll */}
@@ -87,7 +87,7 @@ export default function Header() {
 				</Link>
 
 				{/* Theme + User Menu */}
-				<div className="flex items-center gap-2 transition-all duration-0">
+				<div className="flex items-center gap-2 transition-all duration-0 font-nippo">
 					<UserMenu />
 				</div>
 			</div>

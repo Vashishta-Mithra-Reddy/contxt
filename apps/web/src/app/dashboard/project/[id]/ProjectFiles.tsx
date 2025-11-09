@@ -13,6 +13,7 @@ type DocumentItem = {
   sourcePath: string | null;
   metadata: Record<string, any> | null;
   createdAt?: string;
+  content?: string | null;
 };
 
 export default function ProjectFiles({ projectId }: { projectId: string }) {
@@ -57,10 +58,21 @@ export default function ProjectFiles({ projectId }: { projectId: string }) {
         const contentType = file.file.type;
         const size = file.file.size;
 
+        // Read JSON file content client-side
+        const contentText = await file.file.text();
+        let jsonContent: unknown;
+        try {
+          jsonContent = JSON.parse(contentText);
+        } catch {
+          // If parsing fails, treat as raw text
+          jsonContent = contentText;
+        }
+
+        // Save document with JSON text content
         const res = await fetch(`/api/projects/${projectId}/documents`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, sourcePath, key, contentType, size }),
+          body: JSON.stringify({ title, sourcePath, key, contentType, size, content: contentText }),
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
@@ -69,6 +81,25 @@ export default function ProjectFiles({ projectId }: { projectId: string }) {
         const doc = (await res.json()) as DocumentItem;
         setDocs((prev) => [doc, ...prev]);
         persisted.current.add(file.id);
+
+        // Enqueue sync for embedding, keep payload JSON-first
+        // Include documentId and file metadata in sync metadata for traceability
+        await fetch(`/api/projects/${projectId}/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            externalId: key,
+            type: "json_document",
+            content: jsonContent,
+            metadata: {
+              documentId: doc.id,
+              path: sourcePath,
+              contentType,
+              size,
+              originalTitle: title,
+            },
+          }),
+        });
       } catch (err) {
         console.error(err);
         // Optional: toast error
@@ -83,9 +114,9 @@ export default function ProjectFiles({ projectId }: { projectId: string }) {
           <Dropzone
             provider="cloudflare-r2"
             onFilesChange={setFiles}
-            maxFiles={10}
-            maxSize={1024 * 1024 * 50}
-            helperText="Only JSON, Word, and Excel files are supported. Max 50MB each."
+            maxFiles={1}
+            maxSize={1024 * 1024 * 10}
+            helperText="Only JSON files are supported as of now. Max 10MB each."
           />
 
           {loading ? (

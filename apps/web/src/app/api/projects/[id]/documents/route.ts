@@ -10,6 +10,7 @@ const persistSchema = z.object({
   key: z.string().min(1),
   contentType: z.string().min(1),
   size: z.number().positive(),
+  content: z.string(), // JSON text content
 });
 
 export async function GET(
@@ -52,14 +53,14 @@ export async function POST(
     );
   }
 
-  const { title, sourcePath, key, contentType, size } = parsed.data;
+  const { title, sourcePath, key, contentType, size, content } = parsed.data;
 
   try {
     const doc = await createDocument(hdrs, id, {
       title: title ?? undefined,
       sourceType: "file",
       sourcePath,
-      content: "",
+      content, // store the JSON text as document content
       metadata: { key, contentType, size },
     });
     return NextResponse.json(doc, { status: 201 });

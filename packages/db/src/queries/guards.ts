@@ -2,8 +2,31 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../index";
 import { apiKeys, projects } from "../schema/contxt";
 import type { AuthContext, Permission } from "./types";
+import { createHash } from "crypto";
 
 export async function resolveApiKey(keyHash: string) {
+  // Recognize WORKER_BEARER_TOKEN as a global API key with admin/embed permissions
+  const workerToken = process.env.WORKER_BEARER_TOKEN;
+  if (workerToken) {
+    const workerHash = createHash("sha256").update(workerToken).digest("hex");
+    if (keyHash === workerHash) {
+      return {
+        id: "global-worker",
+        userId: "system",
+        projectId: null,
+        name: "Global Worker",
+        keyPrefix: "ctx_worker_",
+        keyHash: workerHash,
+        permissions: ["read", "write", "embed", "admin"],
+        neverExpires: true,
+        expiresAt: null,
+        lastUsed: null,
+        revoked: false,
+        createdAt: new Date(),
+      } as any;
+    }
+  }
+
   const [key] = await db.select().from(apiKeys).where(eq(apiKeys.keyHash, keyHash));
   if (!key || key.revoked) {
     throw new Error("Invalid or revoked API key");

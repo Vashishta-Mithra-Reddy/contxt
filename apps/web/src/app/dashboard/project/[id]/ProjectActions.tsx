@@ -13,7 +13,8 @@ import {
 import ProjectFiles from "./ProjectFiles";
 import ApiKeys from "./ApiKeys";
 import ProjectSettings from "./ProjectSettings";
-import { UploadIcon, KeyIcon, SettingsIcon } from "lucide-react";
+import { UploadIcon, KeyIcon, SettingsIcon, PlayIcon } from "lucide-react";
+import { toast } from "sonner";
 
 type Project = {
   id: string;
@@ -34,6 +35,25 @@ export default function ProjectActions({
   projectId: string;
   project: Project;
 }) {
+  const [running, setRunning] = React.useState(false);
+
+  const runWorker = async () => {
+    setRunning(true);
+    try {
+      const res = await fetch(`/api/worker?projectId=${projectId}`, { method: "POST" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || "Worker failed");
+
+      const embedded = j?.embedded ?? 0;
+      const skipped = j?.skipped ?? 0;
+      const processed = j?.processed ?? 0;
+      toast.success(`Worker ran: processed ${processed}, embedded ${embedded}, skipped ${skipped}`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to run worker");
+    } finally {
+      setRunning(false);
+    }
+  };
   return (
     <div className="space-y-6">
       {/* Options bar */}
@@ -73,7 +93,7 @@ export default function ProjectActions({
         {/* Project Settings */}
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline"><SettingsIcon className="w-4 h-4 mr-1" /> Project Settings</Button>
+            <Button variant="default"><SettingsIcon className="w-4 h-4 mr-1" /> Project Settings</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -85,6 +105,12 @@ export default function ProjectActions({
             <ProjectSettings project={project} />
           </DialogContent>
         </Dialog>
+
+        {/* Run Worker */}
+        <Button variant="default" onClick={runWorker} disabled={running}>
+          <PlayIcon className="w-4 h-4 mr-1" />
+          {running ? "Vectorizing..." : "Vectorize Content"}
+        </Button>
       </div>
     </div>
   );

@@ -92,8 +92,8 @@ export default function Dashboard({ session }: { session: any }) {
 		<div className="max-w-7xl mx-auto w-full px-4 py-6 space-y-10">
 			{/* Removed the inline "Create a project" section and moved it to a dialog */}
 			<section className="space-y-3">
-				<div className="flex items-center justify-between">
-					<h3 className="text-xl font-semibold text-foreground">Your projects</h3>
+				<div className="flex items-end justify-between mb-8">
+					<h3 className="text-2xl font-semibold text-foreground">Your projects</h3>
 					<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
 						<DialogTrigger asChild>
 							<Button

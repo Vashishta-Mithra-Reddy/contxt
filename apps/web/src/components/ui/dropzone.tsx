@@ -63,9 +63,9 @@ export function Dropzone({
   variant = "default",
   accept = {
     "application/json": [],
-    "application/msword": [],
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-      [],
+    // "application/msword": [],
+    // "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    //   [],
   },
   maxFiles = 5,
   maxSize = 1024 * 1024 * 10, // 10MB
