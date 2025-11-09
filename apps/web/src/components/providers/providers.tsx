@@ -11,7 +11,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 			enableSystem
 		>
 			{children}
-			<Toaster richColors />
+			<Toaster/>
 		</ThemeProvider>
 	);
 }

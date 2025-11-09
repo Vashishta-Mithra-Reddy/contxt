@@ -21,3 +21,5 @@ export const auth = betterAuth<BetterAuthOptions>({
 	},
   plugins: [nextCookies()]
 });
+
+export * from "@contxt/db/queries/types";

@@ -9,3 +9,16 @@ neonConfig.webSocketConstructor = ws;
 
 const sql = neon(process.env.DATABASE_URL || "");
 export const db = drizzle(sql);
+
+
+
+export * as ProjectQueries from "./queries/projects";
+export * as DocumentQueries from "./queries/documents";
+export * as ChunkQueries from "./queries/chunks";
+export * as SyncQueueQueries from "./queries/syncQueue";
+export * as ApiKeyQueries from "./queries/apiKeys";
+export * as QueryLogQueries from "./queries/queryLogs";
+export * as WebhookQueries from "./queries/webhooks";
+
+export * from "./queries/types";
+export { ensureProjectAccess, ensureSessionOwner, resolveApiKey, requirePermission } from "./queries/guards";

@@ -1,4 +1,7 @@
 "use client";
+
+import ModeToggle from "./mode-toggle";
+
 // import dynamic from "next/dynamic";
 
 // Dynamically import LiquidMetal to prevent SSR issues
@@ -13,7 +16,8 @@
 export default function Footer() {
 	return (
 		<footer className="border-t-0 border-dashed px-4 pb-24 md:pb-6 pt-4 font-jakarta">
-			<div className="flex-center">
+			<div className="flex-col-center">
+				<ModeToggle/>
 				<div className="max-w-7xl flex-col-center">
 					{/* <LiquidMetal
 						width={200}
@@ -34,7 +38,7 @@ export default function Footer() {
 						fit="contain"
 					/> */}
 					<p className="text-muted-foreground/50 text-sm pb-2">
-						Use RAG directly in your projects.
+						Plug and play with RAG.
 					</p>
 				</div>
 			</div>

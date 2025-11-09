@@ -6,6 +6,8 @@
 @theme {
   --font-sans: "Inter", "Geist", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-nippo: "Nippo", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 html,
@@ -52,7 +54,9 @@ body {
 	--sidebar-accent: oklch(0.97 0 0);
 	--sidebar-accent-foreground: oklch(0.205 0 0);
 	--sidebar-border: oklch(0.922 0 0);
-	--sidebar-ring: oklch(0.708 0 0);
+	--sidebar-ring: oklch(93.403% 0.00011 271.152);
+
+	--header: oklch(96.715% 0.00011 271.152);
 }
 
 .dark {
@@ -106,6 +110,8 @@ body {
     --sidebar-accent-foreground: oklch(0.96 0 0);
     --sidebar-border: oklch(0.3 0 0 / 40%);
     --sidebar-ring: oklch(0.7 0 0);
+
+	--header: oklch(0.18 0 0);
 }
 
 @theme inline {
@@ -144,6 +150,7 @@ body {
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
+	--color-header: var(--header);
 }
 
 @layer base {
@@ -157,7 +164,7 @@ body {
 
 @layer components {
 	.wrapperx {
-		@apply px-6 py-6 pb-6 md:px-12 md:py-8 md:pb-12;
+		@apply px-6 py-6 pb-6 md:px-12 md:py-8 md:pb-12 md:pt-32 pt-24;
 	}
 	.wrappery {
 		@apply px-4 py-6;

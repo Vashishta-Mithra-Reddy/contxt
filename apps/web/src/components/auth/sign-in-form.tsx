@@ -65,7 +65,7 @@ export default function SignInForm({
 	};
 
 	return (
-		<div className="w-full max-w-md font-jakarta">
+		<div className="w-full h-full max-w-md font-jakarta">
 			<div className="">
 				<h1 className="text-center font-semibold text-3xl tracking-tight font-outfit">
 					Welcome Back, <span>Human</span>
