@@ -89,14 +89,14 @@ export async function POST(
     // Return the plaintext key ONLY once to the client
     return NextResponse.json(
       {
-        id: row.id,
-        name: row.name,
-        keyPrefix: row.keyPrefix,
-        permissions: row.permissions,
-        neverExpires: row.neverExpires,
-        expiresAt: row.expiresAt,
-        revoked: row.revoked,
-        createdAt: row.createdAt,
+        id: row?.id ?? undefined,
+        name: row?.name ?? undefined,
+        keyPrefix: row?.keyPrefix ?? undefined,
+        permissions: row?.permissions ?? undefined,
+        neverExpires: row?.neverExpires ?? undefined,
+        expiresAt: row?.expiresAt ?? undefined,
+        revoked: row?.revoked ?? undefined,
+        createdAt: row?.createdAt ?? undefined,
         plaintextKey: fullKey,
       },
       { status: 201 }

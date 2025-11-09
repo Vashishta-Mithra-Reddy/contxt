@@ -11,7 +11,7 @@ export async function POST(
 
   try {
     const row = await revokeApiKey(hdrs, keyId);
-    const { keyHash, ...rest } = row;
+    const { ...rest } = row;
     return NextResponse.json(rest, { status: 200 });
   } catch (err: any) {
     return NextResponse.json(
