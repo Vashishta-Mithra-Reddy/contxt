@@ -148,7 +148,7 @@ export default function ProjectData({ projectId }: { projectId: string }) {
 
   // Render only document content as tables — no headers or metadata
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-8">
       {docs.map((d, idx) => (
         <ContentTable key={d.id || idx} content={d.content ?? null} />
       ))}
