@@ -9,11 +9,13 @@ export type AuthContext =
 export const ProjectCreateSchema = z.object({
   name: z.string().min(2),
   description: z.string().optional(),
+  retrievalMode: z.enum(["chunk", "row"]).optional(),
 });
 
 export const ProjectUpdateSchema = z.object({
   name: z.string().min(2).optional(),
   description: z.string().optional(),
+  retrievalMode: z.enum(["chunk", "row"]).optional(),
   settings: z
     .object({
       similarity_threshold: z.number().min(0).max(1).optional(),
@@ -31,6 +33,7 @@ export const DocumentCreateSchema = z
     sourceType: z.string().optional(),
     sourcePath: z.string().optional(),
     content: z.string(),
+    retrievalMode: z.enum(["chunk", "row"]).optional(),
     // Allow arbitrary metadata but prefer standard file metadata when present
     metadata: z
       .object({
@@ -67,6 +70,8 @@ export const DocumentUpdateSchema = z.object({
   sourceType: z.string().optional(),
   sourcePath: z.string().optional(),
   content: z.string().optional(),
+  retrievalMode: z.enum(["chunk", "row"]).optional(),
+  selectedPaths: z.array(z.string()).optional(),
   metadata: z.record(z.string(), z.any()).optional(),
   status: z.enum(["active", "archived"]).optional(),
 });

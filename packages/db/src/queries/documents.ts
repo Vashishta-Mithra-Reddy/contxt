@@ -1,6 +1,6 @@
+import { eq } from "drizzle-orm";
 import { db } from "../index";
 import { documents } from "../schema/contxt";
-import { eq } from "drizzle-orm";
 import type { AuthContext } from "./types";
 import { DocumentCreateSchema, DocumentUpdateSchema } from "./types";
 import { ensureProjectAccess, requirePermission } from "./guards";
@@ -23,6 +23,7 @@ export async function createDocument(ctx: AuthContext, projectId: string, input:
       sourceType: parsed.sourceType,
       sourcePath: parsed.sourcePath,
       content: parsed.content,
+      retrievalMode: parsed.retrievalMode,
       metadata: parsed.metadata ?? {},
       status: "active",
     })
@@ -41,6 +42,7 @@ export async function updateDocument(ctx: AuthContext, projectId: string, docume
       ...(parsed.sourceType ? { sourceType: parsed.sourceType } : {}),
       ...(parsed.sourcePath ? { sourcePath: parsed.sourcePath } : {}),
       ...(parsed.content ? { content: parsed.content } : {}),
+      ...(parsed.retrievalMode ? { retrievalMode: parsed.retrievalMode } : {}),
       ...(parsed.metadata ? { metadata: parsed.metadata } : {}),
       ...(parsed.status ? { status: parsed.status } : {}),
     })

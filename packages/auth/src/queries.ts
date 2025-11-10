@@ -5,6 +5,7 @@ import {
   ProjectQueries,
   DocumentQueries,
   ChunkQueries,
+  RowsQueries,
   SyncQueueQueries,
   ApiKeyQueries,
   QueryLogQueries,
@@ -208,6 +209,38 @@ export async function searchChunksByEmbedding(
 ) {
   const ctx = await deriveAuthContextFromHeaders(headers);
   return ChunkQueries.searchChunksByEmbedding(ctx, projectId, embedding, topK, threshold);
+}
+
+export async function listRowsByProject(headers: Headers, projectId: string) {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  return RowsQueries.listRowsByProject(ctx, projectId);
+}
+
+export async function insertRows(
+  headers: Headers,
+  projectId: string,
+  items: Array<{
+    recordKey: string;
+    data: Record<string, any>;
+    documentId: string | null;
+    embedding: number[];
+    metadata?: Record<string, any>;
+    contentHash?: string | null;
+  }>
+) {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  return RowsQueries.insertRows(ctx, projectId, items);
+}
+
+export async function searchRowsByEmbedding(
+  headers: Headers,
+  projectId: string,
+  embedding: number[],
+  topK: number,
+  threshold?: number,
+) {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  return RowsQueries.searchRowsByEmbedding(ctx, projectId, embedding, topK, threshold);
 }
 
 export async function assertProjectAccess(headers: Headers, projectId: string, required?: "read" | "write" | "embed" | "admin") {

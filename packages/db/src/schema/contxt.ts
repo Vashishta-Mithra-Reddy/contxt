@@ -25,6 +25,7 @@ export const projects = pgTable("projects", {
     included_sections: [],
     embedding_model: "gemini-embedding-001",
   })),
+  retrievalMode: text("retrieval_mode").default("chunk"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -40,6 +41,7 @@ export const documents = pgTable("documents", {
   content: text("content"),
   metadata: jsonb("metadata").default({}),
   status: text("status").default("active"), // 'active' | 'archived'
+  retrievalMode: text("retrieval_mode"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -57,6 +59,22 @@ export const chunks = pgTable("chunks", {
   embedding: vector("embedding", { dimensions: 1536 }), // Gemini embedding dimensions
   metadata: jsonb("metadata").default({}),
   contentHash: text("content_hash"), // dedup tracking
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const rows = pgTable("rows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id").references(() => documents.id, {
+    onDelete: "cascade",
+  }),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  recordKey: text("record_key"), // e.g. "product_123", "row_5", or custom key from the document data
+  data: jsonb("data").notNull(),
+  embedding: vector("embedding", { dimensions: 1536 }),
+  metadata: jsonb("metadata").default({}),
+  contentHash: text("content_hash"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

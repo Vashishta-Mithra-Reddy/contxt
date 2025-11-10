@@ -15,6 +15,7 @@ export const db = drizzle(sql);
 export * as ProjectQueries from "./queries/projects";
 export * as DocumentQueries from "./queries/documents";
 export * as ChunkQueries from "./queries/chunks";
+export * as RowsQueries from "./queries/rows";
 export * as SyncQueueQueries from "./queries/syncQueue";
 export * as ApiKeyQueries from "./queries/apiKeys";
 export * as QueryLogQueries from "./queries/queryLogs";

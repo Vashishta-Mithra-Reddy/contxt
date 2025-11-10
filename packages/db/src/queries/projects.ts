@@ -34,6 +34,7 @@ export async function createProject(ctx: AuthContext, input: unknown) {
       name: parsed.name,
       description: parsed.description,
       userId: ctx.userId,
+      retrievalMode: parsed.retrievalMode ?? "chunk",
       // settings defaults handled by schema
     })
     .returning();
@@ -48,6 +49,7 @@ export async function updateProject(ctx: AuthContext, projectId: string, input: 
     .set({
       ...(parsed.name ? { name: parsed.name } : {}),
       ...(parsed.description ? { description: parsed.description } : {}),
+      ...(parsed.retrievalMode ? { retrievalMode: parsed.retrievalMode } : {}),
       ...(parsed.settings ? { settings: parsed.settings } : {}),
     })
     .where(eq(projects.id, projectId))
