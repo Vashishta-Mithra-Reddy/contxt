@@ -2,8 +2,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@contxt/auth";
 import crypto from "node:crypto";
-import OpenAI from 'openai';
-import { GoogleGenAI } from '@google/genai';
+// import OpenAI from 'openai';
+// import { GoogleGenAI } from '@google/genai';
 import {
   listProjects,
   getProject,
@@ -14,18 +14,19 @@ import {
   deleteChunksForDocument as deleteChunksForDocumentViaAuth,
   listPendingSyncGlobal,
   insertRows as insertRowsViaAuth,
+  deleteRowsForDocument as deleteRowsForDocumentViaAuth,
 } from "@contxt/auth/queries";
 
 // Config
 const DEFAULT_LIMIT = 50;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+// const openai = new OpenAI({
+//   apiKey: process.env.OPENAI_API_KEY!,
+// });
 
-const genai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY!,
-});
+// const genai = new GoogleGenAI({
+//   apiKey: process.env.GEMINI_API_KEY!,
+// });
 
 // Basic chunker: ~1000 chars with ~200 overlap
 function chunkText(input: string, size = 1000, overlap = 200) {
@@ -141,70 +142,112 @@ async function processOneItem(hdrs: Headers, item: any) {
     return { status: "skipped", id: item.id };
   }
 
-  // Decide mode: document override -> project default -> "chunk"
-  const project = await getProject(hdrs, projectId);
-  const modeToUse = (documentMode as "chunk" | "row") ?? (project?.retrievalMode as "chunk" | "row") ?? "chunk";
+  const selectedPaths: string[] = Array.isArray(metadata?.selectedPaths) ? metadata.selectedPaths : [];
+  let rowsEmbedded = 0;
 
-  if (modeToUse === "row") {
-    // Parse JSON content into records; support object or array-of-objects
+  // 1) Row-based indexing (attempt if content appears structured JSON)
+  try {
     let parsed: unknown = null;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      // Content isn't JSON; fallback to chunk mode below
+    parsed = JSON.parse(content);
+
+    let records: Record<string, any>[] = [];
+    if (Array.isArray(parsed) && parsed.every((x) => x && typeof x === "object" && !Array.isArray(x))) {
+      records = parsed as Record<string, any>[];
+    } else if (parsed && typeof parsed === "object") {
+      records = [parsed as Record<string, any>];
     }
 
-    if (parsed && typeof parsed === "object") {
-      const records: Record<string, any>[] =
-        Array.isArray(parsed)
-          ? (parsed as any[]).filter((x) => x && typeof x === "object" && !Array.isArray(x)) as Record<string, any>[]
-          : [parsed as Record<string, any>];
+    // Respect selectedPaths if provided
+    if (selectedPaths.length > 0 && records.length > 0) {
+      const pickPaths = (obj: Record<string, any>) => {
+        const out: Record<string, any> = {};
+        for (const p of selectedPaths) {
+          const segs = p.split(".");
+          let cur: any = obj;
+          for (const s of segs) {
+            if (cur == null) break;
+            cur = cur[s];
+          }
+          if (cur !== undefined) {
+            out[p] = cur;
+          }
+        }
+        return out;
+      };
 
-      if (records.length > 0) {
-        // Create text per record for embedding
-        const texts = records.map((r) => JSON.stringify(r));
-        const vectors = await embedTexts(texts);
-        const items = records.map((r, idx) => ({
-          data: r,
-          recordKey: typeof r.id === "string" ? r.id : metadata?.recordKey ?? item.externalId ?? `row_${idx}`,
-          documentId: documentId || null,
-          embedding: vectors[idx],
-          metadata: { syncId: item.id, ...(metadata || {}) },
-          contentHash: sha256(texts[idx]),
-        }));
+      records = records
+        .map(pickPaths)
+        .map((r) => {
+          const cleaned: Record<string, any> = {};
+          for (const [k, v] of Object.entries(r)) {
+            if (v !== undefined) cleaned[k] = v;
+          }
+          return cleaned;
+        })
+        .filter((r) => Object.keys(r).length > 0);
+    }
 
-        await insertRowsViaAuth(hdrs, projectId, items);
-        await updateSyncStatus(hdrs, projectId, item.id, { status: "embedded" });
-        return { status: "embedded", id: item.id, rows: items.length };
+    if (records.length > 0) {
+      // Compose per-record text for embeddings
+      const texts = records.map((r) =>
+        Object.entries(r)
+          .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
+          .join("\n")
+      );
+      const vectors = await embedTexts(texts);
+
+      // Dedup: remove previous rows for this document
+      if (documentId) {
+        await deleteRowsForDocumentViaAuth(hdrs, projectId, documentId);
       }
-      // If parsed but no usable records, skip to chunk fallback
+
+      const itemsToInsert = records.map((r, idx) => ({
+        data: r,
+        recordKey:
+          typeof r.id === "string"
+            ? r.id
+            : metadata?.recordKey ?? item.externalId ?? `row_${idx}`,
+        documentId: documentId || null,
+        embedding: vectors[idx],
+        metadata: { syncId: item.id, ...(metadata || {}) },
+        contentHash: sha256(texts[idx]),
+      }));
+
+      if (itemsToInsert.length > 0) {
+        await insertRowsViaAuth(hdrs, projectId, itemsToInsert);
+        rowsEmbedded = itemsToInsert.length;
+      }
     }
-    // Fallback to chunk mode if parsing fails or not records
+  } catch {
+    // Non-JSON or parsing failure: skip rows embedding
+    rowsEmbedded = 0;
   }
 
-  // Default chunk indexing
+  // 2) Chunk-based indexing (always)
   const parts = chunkText(content);
-  const vectors = await embedTexts(parts);
+  const chunkVectors = parts.length ? await embedTexts(parts) : [];
 
+  // Dedup: remove previous chunks for this document
   if (documentId) {
     await deleteChunksForDocumentViaAuth(hdrs, projectId, documentId);
   }
 
-  const rows = parts.map((txt, idx) => ({
+  const chunkRows = parts.map((txt, idx) => ({
     documentId: documentId || null,
     chunkIndex: idx,
     chunkText: txt,
-    embedding: vectors[idx],
+    embedding: chunkVectors[idx],
     metadata: { syncId: item.id, ...(metadata || {}) },
     contentHash: sha256(txt),
   }));
 
-  if (rows.length > 0) {
-    await insertChunksViaAuth(hdrs, projectId, rows);
+  if (chunkRows.length > 0) {
+    await insertChunksViaAuth(hdrs, projectId, chunkRows);
   }
 
+  // Mark sync complete once with totals
   await updateSyncStatus(hdrs, projectId, item.id, { status: "embedded" });
-  return { status: "embedded", id: item.id, chunks: rows.length };
+  return { status: "embedded", id: item.id, rows: rowsEmbedded, chunks: chunkRows.length };
 }
 
 export async function POST(req: Request) {

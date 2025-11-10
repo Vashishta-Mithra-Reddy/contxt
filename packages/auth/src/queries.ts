@@ -232,6 +232,11 @@ export async function insertRows(
   return RowsQueries.insertRows(ctx, projectId, items);
 }
 
+export async function deleteRowsForDocument(headers: Headers, projectId: string, documentId: string) {
+  const ctx = await deriveAuthContextFromHeaders(headers);
+  return RowsQueries.deleteRowsForDocument(ctx, projectId, documentId);
+}
+
 export async function searchRowsByEmbedding(
   headers: Headers,
   projectId: string,

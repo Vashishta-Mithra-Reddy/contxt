@@ -37,6 +37,15 @@ export async function insertRows(
   return db.insert(rows).values(values).returning();
 }
 
+export async function deleteRowsForDocument(ctx: AuthContext, projectId: string, documentId: string) {
+  const { permissions } = await ensureProjectAccess(ctx, projectId);
+  requirePermission(permissions, "embed");
+  return db
+    .delete(rows)
+    .where(and(eq(rows.projectId, projectId), eq(rows.documentId, documentId)))
+    .returning();
+}
+
 export async function searchRowsByEmbedding(
   ctx: AuthContext,
   projectId: string,
