@@ -13,7 +13,7 @@ export default async function LoginPage() {
 	}
 
 	return (
-		<div className="flex-center h-full wrapperx">
+		<div className="flex-center h-full wrapperx h-screen">
 			<Login />
 		</div>
 	);
