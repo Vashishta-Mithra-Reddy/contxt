@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 // import { usePathname } from "next/navigation";
-import { ModeToggle } from "./mode-toggle";
+// import { ModeToggle } from "./mode-toggle";
 import UserMenu from "../auth/user-menu";
+// import { usePathname } from "next/navigation";
 // import { authClient } from "@/lib/auth-client";
 import * as React from "react";
 import { motion, useScroll, useMotionValueEvent, useTransform } from "framer-motion";
@@ -38,6 +39,9 @@ export default function Header() {
 	// 		path: { pathname: "/dashboard/settings" },
 	// 	},
 	// ];
+
+	// const pathname = usePathname();
+	// const isDashboard = pathname.startsWith("/dashboard");
 
 	const { scrollY } = useScroll();
 	const [scrolled, setScrolled] = React.useState(false);

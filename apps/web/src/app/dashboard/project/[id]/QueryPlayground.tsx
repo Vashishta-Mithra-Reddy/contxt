@@ -5,6 +5,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 type ChunkContext = {
   id: string;
@@ -20,15 +22,18 @@ export default function QueryPlayground({
   defaults,
 }: {
   projectId: string;
-  defaults?: { topK?: number; threshold?: number };
+  defaults?: { topK?: number; threshold?: number; retrievalMode?: "chunk" | "row" };
 }) {
   const [query, setQuery] = React.useState("");
   const [topK, setTopK] = React.useState<number>(defaults?.topK ?? 6);
   const [threshold, setThreshold] = React.useState<number>(defaults?.threshold ?? 0.65);
+  const [retrievalMode, setRetrievalMode] = React.useState<"chunk" | "row">(defaults?.retrievalMode ?? "chunk");
+  const [useLLM, setUseLLM] = React.useState<boolean>(true);
   const [loading, setLoading] = React.useState(false);
   const [answer, setAnswer] = React.useState<string | null>(null);
   const [chunks, setChunks] = React.useState<ChunkContext[]>([]);
   const [mode, setMode] = React.useState<string | null>(null);
+  const [apiRetrievalMode, setApiRetrievalMode] = React.useState<"chunk" | "row" | null>(null);
 
   const ask = async () => {
     const q = query.trim();
@@ -45,6 +50,7 @@ export default function QueryPlayground({
     setAnswer(null);
     setChunks([]);
     setMode(null);
+    setApiRetrievalMode(null);
 
     try {
       const res = await fetch("/api/query", {
@@ -55,6 +61,8 @@ export default function QueryPlayground({
           query: q,
           topK: safeTopK,
           threshold: safeThreshold,
+          retrievalMode,
+          useLLM,
         }),
       });
 
@@ -66,6 +74,7 @@ export default function QueryPlayground({
       setAnswer(j?.answer ?? "");
       setChunks(Array.isArray(j?.chunks) ? j.chunks : []);
       setMode(j?.mode || null);
+      setApiRetrievalMode(j?.retrievalMode || null);
     } catch (err: any) {
       toast.error(err?.message || "Failed to run query");
     } finally {
@@ -134,6 +143,26 @@ export default function QueryPlayground({
           </div>
         </div>
 
+        <div className="grid gap-2">
+          <label className="text-sm font-medium">Retrieval Mode</label>
+          <Select value={retrievalMode} onValueChange={(v) => setRetrievalMode(v as "chunk" | "row")}>
+            <SelectTrigger className="rounded-md border bg-transparent p-2 text-sm">
+              <SelectValue placeholder="Select retrieval mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="chunk">Chunk (text)</SelectItem>
+              <SelectItem value="row">Row (structured)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <label htmlFor="useLLM" className="text-sm font-medium">
+            Generate Answer (LLM)
+          </label>
+          <Switch id="useLLM" checked={useLLM} onCheckedChange={setUseLLM} />
+        </div>
+
         <div className="flex items-center gap-2">
           <Button onClick={ask} disabled={loading}>
             {loading ? "Asking..." : "Ask"}
@@ -144,6 +173,7 @@ export default function QueryPlayground({
               setAnswer(null);
               setChunks([]);
               setMode(null);
+              setApiRetrievalMode(null);
             }}
             disabled={loading || (!answer && chunks.length === 0)}
           >
@@ -153,7 +183,12 @@ export default function QueryPlayground({
 
         {mode && (
           <p className="text-xs text-muted-foreground">
-            Mode: {mode === "apiKey" ? "API Key" : "Session"}
+            Auth: {mode === "apiKey" ? "API Key" : "Session"}
+          </p>
+        )}
+        {apiRetrievalMode && (
+          <p className="text-xs text-muted-foreground">
+            Retrieval: {apiRetrievalMode === "row" ? "Row (structured)" : "Chunk (text)"}
           </p>
         )}
 
@@ -169,7 +204,8 @@ export default function QueryPlayground({
           </div>
         )}
 
-        {/* {chunks.length > 0 && (
+        {/* Context viewer (optional) */}
+        {chunks.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sm font-medium">Retrieved Contexts</h3>
             <div className="space-y-3">
@@ -177,9 +213,9 @@ export default function QueryPlayground({
                 <div key={c.id || idx} className="rounded-md border p-3">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
-                      Similarity: {Number(c.similarity).toFixed(3)} · Chunk #{c.chunkIndex}
+                      Similarity: {Number(c.similarity).toFixed(3)} {typeof c.chunkIndex === "number" ? `· Chunk #${c.chunkIndex}` : ""}
                     </span>
-                    <span>Doc: {c.documentId || "—"}</span>
+                    {typeof c.documentId !== "undefined" && <span>Doc: {c.documentId || "—"}</span>}
                   </div>
                   <pre className="mt-2 text-sm whitespace-pre-wrap">{c.text}</pre>
                   {c.metadata && Object.keys(c.metadata).length > 0 && (
@@ -194,7 +230,7 @@ export default function QueryPlayground({
               ))}
             </div>
           </div>
-        )} */}
+        )}
       </CardContent>
     </Card>
   );

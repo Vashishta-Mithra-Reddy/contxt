@@ -6,6 +6,8 @@ import {
   assertProjectAccess,
   searchChunksByEmbedding,
   logQuery,
+  searchRowsByEmbedding,
+  getProject,
 } from "@contxt/auth/queries";
 
 // Request schema
@@ -14,6 +16,8 @@ const querySchema = z.object({
   query: z.string().min(1),
   topK: z.number().int().min(1).max(50).optional(),
   threshold: z.number().min(0).max(1).optional(),
+  retrievalMode: z.enum(["chunk", "row"]).optional(),
+  useLLM: z.boolean().optional(),
   model: z.enum(["openai", "gemini"]).optional(), // reserved for future
 });
 
@@ -114,45 +118,77 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid query payload" }, { status: 400 });
   }
 
-  const { projectId, query, topK: topKIn, threshold: thresholdIn } = parsed.data;
+  const {
+    projectId,
+    query,
+    topK: topKIn,
+    threshold: thresholdIn,
+    retrievalMode: modeOverride,
+    useLLM: useLLMIn,
+  } = parsed.data;
 
   // Detect mode for reporting (auth guards will enforce access)
   const authHeader = hdrs.get("authorization") || hdrs.get("Authorization");
   const mode = authHeader?.toLowerCase().startsWith("bearer ") ? "apiKey" : "session";
 
   try {
-    // Explicitly assert project access up front (ensures token scope matches body)
     await assertProjectAccess(hdrs, projectId, "read");
 
-    // Use project defaults if not provided
+    const project = await getProject(hdrs, projectId);
+    const retrievalMode = modeOverride ?? (project?.retrievalMode as "chunk" | "row") ?? "chunk";
+
     const defaultTopK = 6;
     const defaultThreshold = 0.65;
     const topK = typeof topKIn === "number" ? topKIn : defaultTopK;
     const threshold = typeof thresholdIn === "number" ? thresholdIn : defaultThreshold;
+    const useLLM = typeof useLLMIn === "boolean" ? useLLMIn : true; // keep current behavior
 
     // Embed query
     const embedding = await embedOpenAI(query);
 
     // Retrieve top-K results by cosine similarity
-    const rows = await searchChunksByEmbedding(hdrs, projectId, embedding, topK, threshold);
+    const results =
+      retrievalMode === "row"
+        ? await searchRowsByEmbedding(hdrs, projectId, embedding, topK, threshold)
+        : await searchChunksByEmbedding(hdrs, projectId, embedding, topK, threshold);
 
-    // FIX: Use camelCase keys from Drizzle and filter out empty texts
-    const contexts = rows
-      .map((r: any) => ({
-        id: r.id,
-        documentId: r.documentId ?? null,
-        chunkIndex: r.chunkIndex ?? 0,
-        similarity: typeof r.similarity === "number" ? r.similarity : Number(r.similarity) || 0,
-        text: r.chunkText ?? "",
-        metadata: r.metadata || {},
-      }))
-      .filter((c) => c.text && c.text.trim().length > 0);
+    // Normalize contexts to { text, similarity, metadata } for generation/logging
+    const contexts =
+      retrievalMode === "row"
+        ? (results as any[]).map((r) => {
+            const obj = r.data || {};
+            // Simple flattening for textual context; you can improve this if needed.
+            const text =
+              typeof obj === "string"
+                ? obj
+                : JSON.stringify(obj, (_k, v) => (typeof v === "string" ? v : v), 2);
+            const sim = typeof r.similarity === "number" ? r.similarity : Number(r.similarity) || 0;
+            return {
+              id: r.id,
+              documentId: r.documentId ?? null,
+              recordKey: r.recordKey ?? null,
+              similarity: sim,
+              text: text || "",
+              metadata: r.metadata || {},
+            };
+          }).filter((c) => c.text && c.text.trim().length > 0)
+        : (results as any[]).map((r) => ({
+            id: r.id,
+            documentId: r.documentId ?? null,
+            chunkIndex: r.chunkIndex ?? 0,
+            similarity: typeof r.similarity === "number" ? r.similarity : Number(r.similarity) || 0,
+            text: r.chunkText ?? "",
+            metadata: r.metadata || {},
+          })).filter((c) => c.text && c.text.trim().length > 0);
 
-    // Generate answer
-    const answer = await generateAnswerWithGemini(
-      query,
-      contexts.map((c) => ({ text: c.text, similarity: c.similarity }))
-    );
+    // Generate answer (optional)
+    let answer: string | undefined = undefined;
+    if (useLLM) {
+      answer = await generateAnswerWithGemini(
+        query,
+        contexts.map((c) => ({ text: c.text, similarity: c.similarity }))
+      );
+    }
 
     // Log query
     try {
@@ -162,10 +198,10 @@ export async function POST(req: Request) {
         responseText: answer,
         relevantChunks: contexts,
         similarityUsed: threshold,
-        modelUsed: "gemini",
+        modelUsed: useLLM ? "gemini" : "retrieval-only",
       });
     } catch {
-      // Non-fatal; proceed even if logging fails
+      // ignore logging failures
     }
 
     return NextResponse.json({
@@ -175,6 +211,7 @@ export async function POST(req: Request) {
       query,
       topK,
       threshold,
+      retrievalMode,
       answer,
       chunks: contexts,
     });

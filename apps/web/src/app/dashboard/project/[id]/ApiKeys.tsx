@@ -146,7 +146,7 @@ export default function ApiKeys({ projectId }: { projectId: string }) {
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
-        <CardTitle>API Keys</CardTitle>
+        <CardTitle className="text-lg font-semibold pl-2">API Keys</CardTitle>
         <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
@@ -250,7 +250,7 @@ export default function ApiKeys({ projectId }: { projectId: string }) {
           <div className="space-y-3">
             {keys.map((k) => {
               return (
-                <div key={k.id} className="flex items-center justify-between rounded-lg border p-3">
+                <div key={k.id} className="flex items-center justify-between rounded-xl border px-5 py-3.5">
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium">{k.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -267,7 +267,7 @@ export default function ApiKeys({ projectId }: { projectId: string }) {
                       </p>
                     ) : null}
                   </div>
-                  <div className="flex items-center gap-2 pr-4">
+                  <div className="flex items-center gap-2">
                     {k.revoked ? (
                       <span className="text-sm text-destructive">Revoked</span>
                     ) : (

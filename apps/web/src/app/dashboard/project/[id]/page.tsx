@@ -26,11 +26,17 @@ export default async function ProjectPage({
 		redirect("/dashboard");
 	}
 
+	const defaults = {
+		topK: project?.settings?.top_k ?? 6,
+		threshold: project?.settings?.similarity_threshold ?? 0.65,
+		retrievalMode: (project?.retrievalMode as "chunk" | "row") ?? "chunk",
+	};
+
 	return (
-		<div className="wrapperx flex-col-center w-full">
-			<div className="max-w-7xl w-full px-8">
+		<div className="wrapperx flex-col-center w-full font-jakarta">
+			<div className="max-w-7xl w-full px-8 pt-2">
 			
-			<div className="flex items-center justify-between pb-8">
+			<div className="flex items-center justify-between pb-0">
 			<div>
 			<h1 className="text-2xl font-semibold">{project.name}</h1>
 			<p className="text-muted-foreground">
@@ -44,7 +50,7 @@ export default async function ProjectPage({
 
 			<div className="space-y-8">
 			<ProjectData projectId={id} />
-			<QueryPlayground projectId={id} />
+			<QueryPlayground projectId={id} defaults={defaults} />
 			<ApiKeys projectId={id} />
 			</div>
 			</div>

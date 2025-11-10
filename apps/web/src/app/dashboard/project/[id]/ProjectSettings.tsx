@@ -16,6 +16,7 @@ type Project = {
     included_sections?: string[];
     embedding_model?: string;
   };
+  retrievalMode?: "chunk" | "row";
 };
 
 export default function ProjectSettings({ project }: { project: Project }) {
@@ -25,6 +26,7 @@ export default function ProjectSettings({ project }: { project: Project }) {
   const [topK, setTopK] = React.useState<number>(project.settings?.top_k ?? 6);
   const [includedSections, setIncludedSections] = React.useState<string>((project.settings?.included_sections ?? []).join(", "));
   const [embeddingModel, setEmbeddingModel] = React.useState<string>(project.settings?.embedding_model ?? "gemini-embedding-001");
+  const [retrievalMode, setRetrievalMode] = React.useState<"chunk" | "row">(project.retrievalMode ?? "chunk");
 
   const [saving, setSaving] = React.useState(false);
 
@@ -35,6 +37,7 @@ export default function ProjectSettings({ project }: { project: Project }) {
       const payload = {
         // name,
         description,
+        retrievalMode,
         settings: {
           similarity_threshold: similarityThreshold,
           top_k: topK,
@@ -110,6 +113,18 @@ export default function ProjectSettings({ project }: { project: Project }) {
               value={embeddingModel}
               onChange={(e) => setEmbeddingModel(e.target.value)}
             />
+          </div>
+
+          <div className="md:col-span-2 space-y-2">
+            <label className="text-sm font-medium">Default Retrieval Mode</label>
+            <select
+              className="rounded-md border bg-transparent p-2 text-sm"
+              value={retrievalMode}
+              onChange={(e) => setRetrievalMode(e.target.value as "chunk" | "row")}
+            >
+              <option value="chunk">Chunk (text)</option>
+              <option value="row">Row (structured)</option>
+            </select>
           </div>
 
           <div className="md:col-span-2">

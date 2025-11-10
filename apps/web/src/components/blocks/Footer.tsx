@@ -9,7 +9,7 @@ export default function Footer() {
 			<div className="flex-col-center">
 				<ModeToggle/>
 				<div className="max-w-7xl flex-col-center">
-					<p className="text-muted-foreground/50 text-sm pb-2">
+					<p className="text-muted-foreground/50 text-sm pb-2 text-center">
 						Plug and play your knowledge bases, manage embeddings, and retrieve intelligence
               instantly.
 					</p>

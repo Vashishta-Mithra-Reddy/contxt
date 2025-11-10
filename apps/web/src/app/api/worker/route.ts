@@ -13,6 +13,7 @@ import {
   insertChunks as insertChunksViaAuth,
   deleteChunksForDocument as deleteChunksForDocumentViaAuth,
   listPendingSyncGlobal,
+  insertRows as insertRowsViaAuth,
 } from "@contxt/auth/queries";
 
 // Config
@@ -125,21 +126,63 @@ async function getDocumentContent(
   if (docId) {
     const docs = await listDocuments(hdrs, projectId);
     const doc = (docs || []).find((d: any) => d.id === docId);
-    return { documentId: docId, content: doc?.content ?? fallbackContent };
+    return { documentId: docId, documentMode: (doc?.retrievalMode as "chunk" | "row") ?? null, content: doc?.content ?? fallbackContent };
   }
-  return { documentId: null, content: fallbackContent };
+  return { documentId: null, documentMode: null, content: fallbackContent };
 }
 
 async function processOneItem(hdrs: Headers, item: any) {
   const projectId = item.projectId as string;
   const metadata = (item?.metadata || {}) as Record<string, any>;
 
-  const { documentId, content } = await getDocumentContent(hdrs, projectId, metadata, item.content || "");
+  const { documentId, documentMode, content } = await getDocumentContent(hdrs, projectId, metadata, item.content || "");
   if (!content || content.trim().length === 0) {
     await updateSyncStatus(hdrs, projectId, item.id, { status: "skipped" });
     return { status: "skipped", id: item.id };
   }
 
+  // Decide mode: document override -> project default -> "chunk"
+  const project = await getProject(hdrs, projectId);
+  const modeToUse = (documentMode as "chunk" | "row") ?? (project?.retrievalMode as "chunk" | "row") ?? "chunk";
+
+  if (modeToUse === "row") {
+    // Parse JSON content into records; support object or array-of-objects
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      // Content isn't JSON; fallback to chunk mode below
+    }
+
+    if (parsed && typeof parsed === "object") {
+      const records: Record<string, any>[] =
+        Array.isArray(parsed)
+          ? (parsed as any[]).filter((x) => x && typeof x === "object" && !Array.isArray(x)) as Record<string, any>[]
+          : [parsed as Record<string, any>];
+
+      if (records.length > 0) {
+        // Create text per record for embedding
+        const texts = records.map((r) => JSON.stringify(r));
+        const vectors = await embedTexts(texts);
+        const items = records.map((r, idx) => ({
+          data: r,
+          recordKey: typeof r.id === "string" ? r.id : metadata?.recordKey ?? item.externalId ?? `row_${idx}`,
+          documentId: documentId || null,
+          embedding: vectors[idx],
+          metadata: { syncId: item.id, ...(metadata || {}) },
+          contentHash: sha256(texts[idx]),
+        }));
+
+        await insertRowsViaAuth(hdrs, projectId, items);
+        await updateSyncStatus(hdrs, projectId, item.id, { status: "embedded" });
+        return { status: "embedded", id: item.id, rows: items.length };
+      }
+      // If parsed but no usable records, skip to chunk fallback
+    }
+    // Fallback to chunk mode if parsing fails or not records
+  }
+
+  // Default chunk indexing
   const parts = chunkText(content);
   const vectors = await embedTexts(parts);
 

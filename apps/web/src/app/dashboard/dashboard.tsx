@@ -95,10 +95,10 @@ export default function Dashboard({ session }: { session: any }) {
   }, [loading, projects.length]);
 
   return (
-    <div className="max-w-7xl mx-auto w-full px-4 py-6 space-y-10">
+    <div className="max-w-6xl min-h-screen mx-auto w-full space-y-10 font-jakarta">
       {/* Removed the inline "Create a project" section and moved it to a dialog */}
       <section className="space-y-3">
-        <div className="flex items-end justify-between mb-8">
+        <div className="flex items-center md:items-end justify-between mb-8">
           <h3 className="text-2xl font-semibold text-foreground">Your projects</h3>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
