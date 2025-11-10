@@ -5,7 +5,7 @@ import Providers from "@/components/providers/providers";
 import Header from "@/components/blocks/Header";
 import Footer from "@/components/blocks/Footer";
 import localFont from "next/font/local";
-import { Analytics } from "@vercel/analytics/next"
+// import { Analytics } from "@vercel/analytics/next"
 
 // const geistSans = Geist({
 // 	variable: "--font-geist-sans",
@@ -46,7 +46,7 @@ export default function RootLayout({
 					<div className="grid h-svh grid-rows-[auto_1fr]">
 						<Header />
 						{children}
-						<Analytics />
+						{/* <Analytics /> */}
 						<Footer />
 					</div>
 				</Providers>
