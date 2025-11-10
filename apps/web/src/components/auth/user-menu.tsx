@@ -47,7 +47,7 @@ export default function UserMenu({ className }: { className?: string }) {
 						<img
 							src={session.user.image}
 							alt={session.user.name}
-							className="size-6 rounded-full"
+							className="size-5 rounded-full"
 						/>
 					) : (
 						<User className="size-4" />

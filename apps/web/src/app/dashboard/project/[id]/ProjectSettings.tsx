@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 type Project = {
   id: string;
@@ -117,14 +118,15 @@ export default function ProjectSettings({ project }: { project: Project }) {
 
           <div className="md:col-span-2 space-y-2">
             <label className="text-sm font-medium">Default Retrieval Mode</label>
-            <select
-              className="rounded-md border bg-transparent p-2 text-sm"
-              value={retrievalMode}
-              onChange={(e) => setRetrievalMode(e.target.value as "chunk" | "row")}
-            >
-              <option value="chunk">Chunk (text)</option>
-              <option value="row">Row (structured)</option>
-            </select>
+            <Select value={retrievalMode} onValueChange={(v) => setRetrievalMode(v as "chunk" | "row")}>
+              <SelectTrigger className="w-full bg-transparent text-sm">
+                <SelectValue placeholder="Select retrieval mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="chunk">Chunk (text)</SelectItem>
+                <SelectItem value="row">Row (structured)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="md:col-span-2">
