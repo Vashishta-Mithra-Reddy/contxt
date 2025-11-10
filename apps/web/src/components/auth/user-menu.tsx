@@ -43,7 +43,15 @@ export default function UserMenu({ className }: { className?: string }) {
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<div className="flex cursor-pointer items-center gap-2 rounded-xl px-4 py-3.5 border-2 border-foreground/20 text-center transition-all duration-300 hover:bg-foreground/5 hover:text-foreground/90">
-					<User className="size-4" />
+					{session.user.image ? (
+						<img
+							src={session.user.image}
+							alt={session.user.name}
+							className="size-4 rounded-full"
+						/>
+					) : (
+						<User className="size-4" />
+					)}
 					<span className="max-w-24 truncate font-medium text-sm">
 						{session.user.name}
 					</span>
