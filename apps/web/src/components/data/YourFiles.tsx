@@ -29,8 +29,7 @@ export default function YourFiles({
           <div key={idx} className="rounded-lg border overflow-hidden bg-background animate-pulse">
             <div className="aspect-square bg-muted" />
             <div className="p-3 flex items-center justify-between">
-              <span className="h-4 w-24 bg-muted rounded" />
-              <span className="h-6 w-16 bg-muted rounded" />
+              <span className="h-4 w-full bg-muted rounded" />
             </div>
           </div>
         ))}
@@ -70,11 +69,11 @@ export default function YourFiles({
         return (
           <div
             key={d.id}
-            className={`rounded-lg border overflow-hidden bg-background ${archived ? "opacity-80" : ""}`}
+            className={`rounded-lg border w-fit overflow-hidden bg-background transition-all duration-500 ${archived ? "opacity-80" : ""}`}
           >
             <div className="aspect-square relative">
               {archived && (
-                <div className="absolute top-2 left-2 z-10 rounded-md bg-muted px-2 py-1">
+                <div className="absolute top-1 left-2 z-10 rounded-md bg-muted px-2 py-1">
                   <span className="text-xs font-medium text-muted-foreground">Archived</span>
                 </div>
               )}
@@ -83,10 +82,10 @@ export default function YourFiles({
                   src={d.sourcePath}
                   alt={d.title ?? "Uploaded file"}
                   loading="lazy"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover rounded-t-xl"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-muted">
+                <div className="w-full h-full flex items-center justify-center bg-muted rounded-t-lg">
                   <span className="text-xs text-muted-foreground">
                     {d.title ?? "File"}
                   </span>
@@ -94,14 +93,27 @@ export default function YourFiles({
               )}
             </div>
             <div className="p-3 flex items-center justify-between gap-2">
-              <span
+              {/* <span
                 className="text-sm font-medium truncate max-w-[50%]"
                 title={d.title ?? "Untitled"}
               >
                 {d.title ?? "Untitled"}
-              </span>
+              </span> */}
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" asChild>
+                {onToggleStatus && (
+                  <Button
+                    variant={archived ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs rounded-lg"
+                    disabled={busy}
+                    onClick={() => onToggleStatus(d.id, archived ? "active" : "archived")}
+                    aria-label={archived ? "Restore document" : "Archive document"}
+                  >
+                    {busy ? (archived ? "Restoring..." : "Archiving...") : archived ? "Restore" : "Archive"}
+                  </Button>
+                )}
+
+                <Button variant="default" size="sm" asChild className="rounded-lg">
                   <Link
                     href={{ pathname: sourcePath }}
                     target="_blank"
@@ -112,18 +124,7 @@ export default function YourFiles({
                     Open
                   </Link>
                 </Button>
-                {onToggleStatus && (
-                  <Button
-                    variant={archived ? "default" : "outline"}
-                    size="sm"
-                    className="text-xs"
-                    disabled={busy}
-                    onClick={() => onToggleStatus(d.id, archived ? "active" : "archived")}
-                    aria-label={archived ? "Restore document" : "Archive document"}
-                  >
-                    {busy ? (archived ? "Restoring..." : "Archiving...") : archived ? "Restore" : "Archive"}
-                  </Button>
-                )}
+                
               </div>
             </div>
           </div>
@@ -131,4 +132,4 @@ export default function YourFiles({
       })}
     </div>
   );
-}
+} 

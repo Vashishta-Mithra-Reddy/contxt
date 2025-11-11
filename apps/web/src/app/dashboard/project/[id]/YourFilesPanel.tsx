@@ -65,7 +65,7 @@ export default function YourFilesPanel({ projectId }: { projectId: string }) {
   }, [loadDocs]);
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-3 font-jakarta">
       {error ? (
         <div className="text-red-500">{error}</div>
       ) : (
