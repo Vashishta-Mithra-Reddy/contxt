@@ -1,7 +1,10 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { GoogleGenAI, type GenerationConfig } from "@google/genai";
+// NOTE: Keep Node runtime for Gemini SDK. If you deploy a retrieval-only variant,
+// you can switch to Edge for a big latency win:
+// export const runtime = "edge";
+
 import {
   assertProjectAccess,
   searchChunksByEmbedding,
@@ -10,7 +13,6 @@ import {
   getProject,
 } from "@contxt/auth/queries";
 
-// Request schema
 const querySchema = z.object({
   projectId: z.string().uuid(),
   query: z.string().min(1),
@@ -18,94 +20,139 @@ const querySchema = z.object({
   threshold: z.number().min(0).max(1).optional(),
   retrievalMode: z.enum(["chunk", "row"]).optional(),
   useLLM: z.boolean().optional(),
-  model: z.enum(["openai", "gemini"]).optional(), // reserved for future
+  model: z.enum(["openai", "gemini"]).optional(),
 });
 
-// Embedding helper (OpenAI embeddings, 1536 dims)
-async function embedOpenAI(text: string, model = process.env.EMBEDDINGS_MODEL || "text-embedding-3-small") {
+/* --------------------------- Tiny LRU + TTL ---------------------------- */
+// Module-level cache persists per serverless instance (warm invocations).
+class LRU<K, V> {
+  private map = new Map<K, { v: V; t: number }>();
+  constructor(private max = 500, private ttlMs = 60 * 60 * 1000) {} // 1h TTL
+  get(k: K): V | undefined {
+    const e = this.map.get(k);
+    if (!e) return;
+    if (Date.now() - e.t > this.ttlMs) {
+      this.map.delete(k);
+      return;
+    }
+    // bump
+    this.map.delete(k);
+    this.map.set(k, { v: e.v, t: e.t });
+    return e.v;
+    }
+  set(k: K, v: V) {
+    if (this.map.has(k)) this.map.delete(k);
+    this.map.set(k, { v, t: Date.now() });
+    if (this.map.size > this.max) {
+      const firstKey = this.map.keys().next().value;
+      if (firstKey !== undefined) this.map.delete(firstKey);
+    }
+  }
+}
+const embeddingCache = new LRU<string, number[]>(1000, 60 * 60 * 1000); // 1h
+
+/* ------------------------- Embedding (OpenAI) -------------------------- */
+async function embedOpenAI(
+  text: string,
+  model = process.env.EMBEDDINGS_MODEL || "text-embedding-3-small"
+) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY not set");
+
+  const cached = embeddingCache.get(`${model}:${text}`);
+  if (cached) return cached;
+
+  // IMPORTANT: keep payload minimal for speed
   const res = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ model, input: text }),
+    // Low-ish timeout via AbortController pattern could be added if desired.
   });
+
   if (!res.ok) {
-    const j = await res.json().catch(() => ({}));
-    throw new Error(j?.error?.message || "OpenAI embeddings failed");
+    let details = "";
+    try {
+      const j = await res.json();
+      details = j?.error?.message || "";
+    } catch {}
+    throw new Error(details || "OpenAI embeddings failed");
   }
+
   const json = await res.json();
   const embedding = (json?.data?.[0]?.embedding as number[]) || [];
+  if (!Array.isArray(embedding) || embedding.length === 0) {
+    throw new Error("Empty embedding");
+  }
+  embeddingCache.set(`${model}:${text}`, embedding);
   return embedding;
 }
 
-// Answer generation (Gemini)
-export async function generateAnswerWithGemini(
+/* --------------------------- Gemini (on-demand) ------------------------ */
+// Lazy-import the SDK to avoid cold-start overhead on retrieval-only calls.
+async function generateAnswerWithGemini(
   query: string,
   contexts: Array<{ text: string; similarity: number }>
 ): Promise<string> {
-  
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error("GEMINI_API_KEY not set");
-    throw new Error("GEMINI_API_KEY not set");
+  if (!apiKey) throw new Error("GEMINI_API_KEY not set");
+
+  // Defer import until actually needed.
+  const { GoogleGenAI } = await import("@google/genai");
+  const genAI = new GoogleGenAI({ apiKey });
+
+  const safeContexts = contexts.filter((c) => c.text && c.text.trim().length > 0);
+  if (safeContexts.length === 0) {
+    return "I don't know based on the provided context.";
   }
 
+  const contextText = safeContexts
+    .map((c, i) => `Context #${i + 1} [sim=${c.similarity.toFixed(3)}]:\n${c.text}`)
+    .join("\n\n---\n");
+
+  const prompt =
+    `You are a helpful assistant. Answer strictly from the provided context.\n` +
+    `If absent, say: "I don't know based on the provided context."\n\n` +
+    `---BEGIN CONTEXT---\n${contextText}\n---END CONTEXT---\n\n` +
+    `Question:\n${query}\n\nAnswer:`;
+
   try {
-    // 1. Initialize with the new SDK
-    const genAI = new GoogleGenAI({ apiKey });
-
-    // If no usable contexts, return grounded fallback
-    const safeContexts = contexts.filter((c) => c.text && c.text.trim().length > 0);
-    if (safeContexts.length === 0) {
-      return "I don't know based on the provided context.";
-    }
-
-    const contextText = safeContexts
-      .map((c, i) => `Context #${i + 1} [sim=${c.similarity.toFixed(3)}]:\n${c.text}`)
-      .join("\n\n---\n");
-
-    const prompt =
-      `You are a helpful assistant. You must answer the question strictly based on the provided context.\n` +
-      `If the answer is not in the context, say "I don't know based on the provided context."\n\n` +
-      `---BEGIN CONTEXT---\n` +
-      `${contextText}\n` +
-      `---END CONTEXT---\n\n` +
-      `Question:\n${query}\n\n` +
-      `Answer:`;
-
-    const generationConfig: GenerationConfig = {
-      maxOutputTokens: 1024,
-    };
-
     const response = await genAI.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: generationConfig,
+      config: { maxOutputTokens: 1024 },
     });
-
-    // Removed noisy console.log(prompt)
     return response.text ?? "";
-  } catch (error) {
-    console.error("Error generating content with Gemini:", error);
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "response" in error &&
-      (error as any).response?.promptFeedback?.blockReason
-    ) {
-      return `Generation blocked due to: ${(error as any).response.promptFeedback.blockReason}`;
+  } catch (error: any) {
+    if (error?.response?.promptFeedback?.blockReason) {
+      return `Generation blocked due to: ${error.response.promptFeedback.blockReason}`;
     }
     return "I am sorry, an error occurred while generating the answer.";
   }
 }
 
+/* --------------------------- Fast Obj -> Text -------------------------- */
+// Avoid costly JSON.stringify with custom replacer. Bound size to keep prompt lean.
+function objectToSnippet(obj: unknown, maxLen = 4000): string {
+  if (obj == null) return "";
+  if (typeof obj === "string") return obj.slice(0, maxLen);
+  if (typeof obj === "number" || typeof obj === "boolean") return String(obj);
+  try {
+    const s = JSON.stringify(obj);
+    return s.length > maxLen ? s.slice(0, maxLen) + "…" : s;
+  } catch {
+    return "";
+  }
+}
+
+/* ------------------------------- Handler ------------------------------- */
 export async function POST(req: Request) {
   const hdrs = await headers();
 
+  // Parse input fast-path
   let body: unknown;
   try {
     body = await req.json();
@@ -127,91 +174,116 @@ export async function POST(req: Request) {
     useLLM: useLLMIn,
   } = parsed.data;
 
-  // Detect mode for reporting (auth guards will enforce access)
+  // Detect mode for reporting
   const authHeader = hdrs.get("authorization") || hdrs.get("Authorization");
   const mode = authHeader?.toLowerCase().startsWith("bearer ") ? "apiKey" : "session";
 
-  try {
-    await assertProjectAccess(hdrs, projectId, "read");
+  // Begin I/O in parallel where safe
+  const accessPromise = assertProjectAccess(hdrs, projectId, "read");
+  const projectPromise = getProject(hdrs, projectId);
 
-    const project = await getProject(hdrs, projectId);
-    const retrievalMode = modeOverride ?? (project?.retrievalMode as "chunk" | "row") ?? "chunk";
-  
-    const topKFallback = typeof (project as any)?.settings?.top_k === "number" ? (project as any).settings.top_k : 6;
-    const thresholdFallback =
+  try {
+    // Ensure access before using any project data
+    await accessPromise;
+    const project = await projectPromise;
+
+    const retrievalMode =
+      modeOverride ?? (project?.retrievalMode as "chunk" | "row") ?? "chunk";
+
+    // Pull defaults from project settings with safe fallbacks
+    const topKDefault =
+      typeof (project as any)?.settings?.top_k === "number"
+        ? (project as any).settings.top_k
+        : 6;
+    const thresholdDefault =
       typeof (project as any)?.settings?.similarity_threshold === "number"
         ? (project as any).settings.similarity_threshold
         : 0.65;
-  
-    const rawTopK = typeof topKIn === "number" ? topKIn : topKFallback;
-    const rawThreshold = typeof thresholdIn === "number" ? thresholdIn : thresholdFallback;
-  
-    // Clamp to safe bounds
-    const topK = Math.max(1, Math.min(50, Math.round(rawTopK)));
-    const threshold = Math.max(0, Math.min(1, Number(rawThreshold)));
-  
-    const useLLM = typeof useLLMIn === "boolean" ? useLLMIn : false; // keep current behavior
 
-    // Embed query
+    // Clamp/config
+    const topK = Math.max(1, Math.min(50, Math.round(typeof topKIn === "number" ? topKIn : topKDefault)));
+    const threshold = Math.max(0, Math.min(1, Number(typeof thresholdIn === "number" ? thresholdIn : thresholdDefault)));
+    const useLLM = !!useLLMIn;
+
+    // Parallelize embedding with nothing else that needs it
     const embedding = await embedOpenAI(query);
 
-    // Retrieve top-K results by cosine similarity
+    // Retrieval
     const results =
       retrievalMode === "row"
         ? await searchRowsByEmbedding(hdrs, projectId, embedding, topK, threshold)
         : await searchChunksByEmbedding(hdrs, projectId, embedding, topK, threshold);
 
-    // Normalize contexts to { text, similarity, metadata } for generation/logging
+    // Normalize contexts compactly
     const contexts =
       retrievalMode === "row"
         ? (results as any[]).map((r) => {
-            const obj = r.data || {};
-            // Simple flattening for textual context; you can improve this if needed.
-            const text =
-              typeof obj === "string"
-                ? obj
-                : JSON.stringify(obj, (_k, v) => (typeof v === "string" ? v : v), 2);
             const sim = typeof r.similarity === "number" ? r.similarity : Number(r.similarity) || 0;
-            return {
-              id: r.id,
-              documentId: r.documentId ?? null,
-              recordKey: r.recordKey ?? null,
-              similarity: sim,
-              text: text || "",
-              metadata: r.metadata || {},
-            };
-          }).filter((c) => c.text && c.text.trim().length > 0)
-        : (results as any[]).map((r) => ({
-            id: r.id,
-            documentId: r.documentId ?? null,
-            chunkIndex: r.chunkIndex ?? 0,
-            similarity: typeof r.similarity === "number" ? r.similarity : Number(r.similarity) || 0,
-            text: r.chunkText ?? "",
-            metadata: r.metadata || {},
-          })).filter((c) => c.text && c.text.trim().length > 0);
+            const text = objectToSnippet(r.data);
+            return text?.trim()
+              ? {
+                  id: r.id,
+                  documentId: r.documentId ?? null,
+                  recordKey: r.recordKey ?? null,
+                  similarity: sim,
+                  text,
+                  metadata: r.metadata || {},
+                }
+              : null;
+          }).filter(Boolean) as any[]
+        : (results as any[]).map((r) => {
+            const sim = typeof r.similarity === "number" ? r.similarity : Number(r.similarity) || 0;
+            const text = (r.chunkText ?? "").trim();
+            return text
+              ? {
+                  id: r.id,
+                  documentId: r.documentId ?? null,
+                  chunkIndex: r.chunkIndex ?? 0,
+                  similarity: sim,
+                  text,
+                  metadata: r.metadata || {},
+                }
+              : null;
+          }).filter(Boolean) as any[];
 
-    // Generate answer (optional)
-    let answer: string | undefined = undefined;
-    if (useLLM) {
-      answer = await generateAnswerWithGemini(
-        query,
-        contexts.map((c) => ({ text: c.text, similarity: c.similarity }))
-      );
-    }
-
-    // Log query
-    try {
-      await logQuery(hdrs, {
+    // If LLM is off, return immediately (non-blocking log)
+    if (!useLLM) {
+      // Fire-and-forget logging
+      logQuery(hdrs, {
         projectId,
         queryText: query,
-        responseText: answer,
+        responseText: undefined,
         relevantChunks: contexts,
         similarityUsed: threshold,
-        modelUsed: useLLM ? "gemini" : "retrieval-only",
+        modelUsed: "retrieval-only",
+      }).catch(() => {});
+      return NextResponse.json({
+        ok: true,
+        mode,
+        projectId,
+        query,
+        topK,
+        threshold,
+        retrievalMode,
+        chunks: contexts,
       });
-    } catch {
-      // ignore logging failures
     }
+
+    // LLM generation (lazy Gemini import inside function)
+    const answer = await generateAnswerWithGemini(
+      query,
+      contexts.map((c) => ({ text: c.text, similarity: c.similarity }))
+    );
+
+    // Non-blocking log
+    logQuery(hdrs, {
+      projectId,
+      queryText: query,
+      responseText: answer,
+      relevantChunks: contexts,
+      similarityUsed: threshold,
+      modelUsed: "gemini",
+    }).catch(() => {});
 
     return NextResponse.json({
       ok: true,
