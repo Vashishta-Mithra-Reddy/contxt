@@ -1,5 +1,5 @@
 import { db } from "../index";
-import { rows } from "../schema/contxt";
+import { rows, documents } from "../schema/contxt";
 import { and, eq, gt, desc, sql, cosineDistance } from "drizzle-orm";
 import type { AuthContext } from "./types";
 import { ensureProjectAccess, requirePermission } from "./guards";
@@ -62,10 +62,10 @@ export async function searchRowsByEmbedding(
 
   const similarity = sql<number>`1 - (${cosineDistance(rows.embedding, embedding)})`;
 
+  // Only search against active documents; keep archived embeddings intact
+  const baseWhere = and(eq(rows.projectId, projectId), eq(documents.status, "active"));
   const whereExpr =
-    threshold != null
-      ? and(eq(rows.projectId, projectId), gt(similarity, threshold))
-      : eq(rows.projectId, projectId);
+    threshold != null ? and(baseWhere, gt(similarity, threshold)) : baseWhere;
 
   const result = await db
     .select({
@@ -80,6 +80,7 @@ export async function searchRowsByEmbedding(
       similarity,
     })
     .from(rows)
+    .innerJoin(documents, eq(rows.documentId, documents.id))
     .where(whereExpr)
     .orderBy((fields) => desc(fields.similarity))
     .limit(topK);

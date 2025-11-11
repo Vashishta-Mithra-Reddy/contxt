@@ -8,14 +8,19 @@ type DocumentItem = {
   sourcePath: string | null;
   metadata?: Record<string, any> | null;
   createdAt?: string;
+  status?: "active" | "archived";
 };
 
 export default function YourFiles({
   docs,
   loading = false,
+  onToggleStatus,
+  toggling,
 }: {
   docs: DocumentItem[];
   loading?: boolean;
+  onToggleStatus?: (docId: string, nextStatus: "active" | "archived") => void;
+  toggling?: Record<string, boolean>;
 }) {
   if (loading) {
     return (
@@ -59,9 +64,20 @@ export default function YourFiles({
             ? "https://" + d.sourcePath
             : d.sourcePath || "#";
 
+        const archived = d.status === "archived";
+        const busy = !!toggling?.[d.id];
+
         return (
-          <div key={d.id} className="rounded-lg border overflow-hidden bg-background">
-            <div className="aspect-square">
+          <div
+            key={d.id}
+            className={`rounded-lg border overflow-hidden bg-background ${archived ? "opacity-80" : ""}`}
+          >
+            <div className="aspect-square relative">
+              {archived && (
+                <div className="absolute top-2 left-2 z-10 rounded-md bg-muted px-2 py-1">
+                  <span className="text-xs font-medium text-muted-foreground">Archived</span>
+                </div>
+              )}
               {isImage && d.sourcePath ? (
                 <img
                   src={d.sourcePath}
@@ -77,21 +93,38 @@ export default function YourFiles({
                 </div>
               )}
             </div>
-            <div className="p-3 flex items-center justify-between">
-              <span className="text-sm font-medium truncate max-w-[70%]" title={d.title ?? "Untitled"}>
+            <div className="p-3 flex items-center justify-between gap-2">
+              <span
+                className="text-sm font-medium truncate max-w-[50%]"
+                title={d.title ?? "Untitled"}
+              >
                 {d.title ?? "Untitled"}
               </span>
-              <Button variant="ghost" size="sm" asChild>
-                <Link
-                  href={{ pathname: sourcePath }}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs"
-                  aria-label={`Open ${d.title ?? "file"}`}
-                >
-                  Open
-                </Link>
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" asChild>
+                  <Link
+                    href={{ pathname: sourcePath }}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs"
+                    aria-label={`Open ${d.title ?? "file"}`}
+                  >
+                    Open
+                  </Link>
+                </Button>
+                {onToggleStatus && (
+                  <Button
+                    variant={archived ? "default" : "outline"}
+                    size="sm"
+                    className="text-xs"
+                    disabled={busy}
+                    onClick={() => onToggleStatus(d.id, archived ? "active" : "archived")}
+                    aria-label={archived ? "Restore document" : "Archive document"}
+                  >
+                    {busy ? (archived ? "Restoring..." : "Archiving...") : archived ? "Restore" : "Archive"}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         );
