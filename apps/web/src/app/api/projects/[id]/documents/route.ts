@@ -11,6 +11,7 @@ const persistSchema = z.object({
   contentType: z.string().min(1),
   size: z.number().positive(),
   content: z.string(), // JSON text content
+  parsedContent: z.any().optional(), // normalized JSON form
 });
 
 export async function GET(
@@ -37,37 +38,21 @@ export async function POST(
 ) {
   const hdrs = await headers();
   const { id } = await context.params;
+  const body = await req.json();
+  const parsed = persistSchema.parse(body);
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const doc = await createDocument(hdrs, id, {
+    title: parsed.title,
+    sourceType: "file",
+    sourcePath: parsed.sourcePath,
+    content: parsed.content,
+    parsedContent: parsed.parsedContent,
+    metadata: {
+      key: parsed.key,
+      contentType: parsed.contentType,
+      size: parsed.size,
+    },
+  });
 
-  const parsed = persistSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid document payload" },
-      { status: 400 }
-    );
-  }
-
-  const { title, sourcePath, key, contentType, size, content } = parsed.data;
-
-  try {
-    const doc = await createDocument(hdrs, id, {
-      title: title ?? undefined,
-      sourceType: "file",
-      sourcePath,
-      content, // store the JSON text as document content
-      metadata: { key, contentType, size },
-    });
-    return NextResponse.json(doc, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || "Failed to create document" },
-      { status: 400 }
-    );
-  }
+  return NextResponse.json(doc, { status: 200 });
 }

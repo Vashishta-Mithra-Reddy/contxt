@@ -39,6 +39,7 @@ export const documents = pgTable("documents", {
   sourceType: text("source_type"), // e.g. 'file', 'api', 'manual'
   sourcePath: text("source_path"), // file name or URL
   content: text("content"),
+  parsedContent: jsonb("parsed_content"),
   metadata: jsonb("metadata").default({}),
   status: text("status").default("active"), // 'active' | 'archived'
   retrievalMode: text("retrieval_mode"),

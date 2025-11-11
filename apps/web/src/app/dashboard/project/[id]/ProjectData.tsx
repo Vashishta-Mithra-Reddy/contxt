@@ -11,14 +11,18 @@ type DocumentItem = {
   sourcePath: string | null;
   createdAt?: string;
   content?: string | null;
+  parsedContent?: unknown | null;
 };
 
-function ContentTable({ content }: { content?: string | null }) {
-  let parsed: unknown = content ?? "";
-  try {
-    parsed = content ? JSON.parse(content) : "";
-  } catch {
-    // leave parsed as raw string
+function ContentTable({ content, parsedContent }: { content?: string | null; parsedContent?: unknown | null }) {
+  let parsed: unknown = parsedContent ?? "";
+  if (parsedContent == null) {
+    parsed = content ?? "";
+    try {
+      parsed = content ? JSON.parse(content) : "";
+    } catch {
+      // leave parsed as raw string
+    }
   }
 
   const formatValue = (val: unknown) => {
@@ -155,7 +159,7 @@ export default function ProjectData({ projectId }: { projectId: string }) {
       {docs.map((d, idx) => (
         <div key={d.id || idx} className="pt-8">
           <h3 className="text-lg font-medium pb-2">{d.title || `Document ${idx + 1}`}</h3>
-          <ContentTable content={d.content ?? null} />
+          <ContentTable content={d.content ?? null} parsedContent={d.parsedContent ?? null} />
         </div>
       ))}
     </div>

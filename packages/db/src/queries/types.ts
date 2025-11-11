@@ -33,6 +33,7 @@ export const DocumentCreateSchema = z
     sourceType: z.string().optional(),
     sourcePath: z.string().optional(),
     content: z.string(),
+    parsedContent: z.any().optional(),
     retrievalMode: z.enum(["chunk", "row"]).optional(),
     // Allow arbitrary metadata but prefer standard file metadata when present
     metadata: z
@@ -70,6 +71,7 @@ export const DocumentUpdateSchema = z.object({
   sourceType: z.string().optional(),
   sourcePath: z.string().optional(),
   content: z.string().optional(),
+  parsedContent: z.any().optional(),
   retrievalMode: z.enum(["chunk", "row"]).optional(),
   selectedPaths: z.array(z.string()).optional(),
   metadata: z.record(z.string(), z.any()).optional(),

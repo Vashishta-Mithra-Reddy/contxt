@@ -59,12 +59,15 @@ export default function ProjectFiles({ projectId }: { projectId: string }) {
         const size = file.file.size;
 
         const contentText = await file.file.text();
+        
+        // Convert to JSON before enqueuing sync
+        const normalizedJson = await convertFileToJson(file.file);
 
         // Save document with original content text (unchanged)
         const res = await fetch(`/api/projects/${projectId}/documents`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, sourcePath, key, contentType, size, content: contentText }),
+          body: JSON.stringify({ title, sourcePath, key, contentType, size, content: contentText, parsedContent: normalizedJson }),
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
@@ -77,9 +80,6 @@ export default function ProjectFiles({ projectId }: { projectId: string }) {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("documents:updated"));
         }
-
-        // Convert to JSON before enqueuing sync
-        const normalizedJson = await convertFileToJson(file.file);
 
         await fetch(`/api/projects/${projectId}/sync`, {
           method: "POST",
