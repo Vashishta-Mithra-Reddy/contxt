@@ -123,13 +123,15 @@ async function getDocumentContent(
   metadata: any,
   fallbackContent: string
 ) {
-  const docId = metadata?.documentId;
-  if (docId) {
-    const docs = await listDocuments(hdrs, projectId);
-    const doc = (docs || []).find((d: any) => d.id === docId);
-    return { documentId: docId, documentMode: (doc?.retrievalMode as "chunk" | "row") ?? null, content: doc?.content ?? fallbackContent };
-  }
-  return { documentId: null, documentMode: null, content: fallbackContent };
+  const docId = metadata?.documentId ?? null;
+  // Do not read documents table; use content from sync queue
+  return { documentId: docId, documentMode: null, content: fallbackContent };
+  // if (docId) {
+  //   const docs = await listDocuments(hdrs, projectId);
+  //   const doc = (docs || []).find((d: any) => d.id === docId);
+  //   return { documentId: docId, documentMode: (doc?.retrievalMode as "chunk" | "row") ?? null, content: doc?.content ?? fallbackContent };
+  // }
+  // return { documentId: null, documentMode: null, content: fallbackContent };
 }
 
 async function processOneItem(hdrs: Headers, item: any) {
