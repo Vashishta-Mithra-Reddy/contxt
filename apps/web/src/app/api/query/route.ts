@@ -136,12 +136,21 @@ export async function POST(req: Request) {
 
     const project = await getProject(hdrs, projectId);
     const retrievalMode = modeOverride ?? (project?.retrievalMode as "chunk" | "row") ?? "chunk";
-
-    const defaultTopK = 6;
-    const defaultThreshold = 0.65;
-    const topK = typeof topKIn === "number" ? topKIn : defaultTopK;
-    const threshold = typeof thresholdIn === "number" ? thresholdIn : defaultThreshold;
-    const useLLM = typeof useLLMIn === "boolean" ? useLLMIn : true; // keep current behavior
+  
+    const topKFallback = typeof (project as any)?.settings?.top_k === "number" ? (project as any).settings.top_k : 6;
+    const thresholdFallback =
+      typeof (project as any)?.settings?.similarity_threshold === "number"
+        ? (project as any).settings.similarity_threshold
+        : 0.65;
+  
+    const rawTopK = typeof topKIn === "number" ? topKIn : topKFallback;
+    const rawThreshold = typeof thresholdIn === "number" ? thresholdIn : thresholdFallback;
+  
+    // Clamp to safe bounds
+    const topK = Math.max(1, Math.min(50, Math.round(rawTopK)));
+    const threshold = Math.max(0, Math.min(1, Number(rawThreshold)));
+  
+    const useLLM = typeof useLLMIn === "boolean" ? useLLMIn : false; // keep current behavior
 
     // Embed query
     const embedding = await embedOpenAI(query);
