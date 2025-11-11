@@ -146,11 +146,17 @@ export default function ProjectData({ projectId }: { projectId: string }) {
     };
   }, [projectId]);
 
+  if (docsLoading) return <Spinner />;
+  if (docsError) return <div className="text-red-500">{docsError}</div>;
+
   // Render only document content as tables — no headers or metadata
   return (
-    <div className="space-y-8 pt-8">
+    <div className="space-y-8">
       {docs.map((d, idx) => (
-        <ContentTable key={d.id || idx} content={d.content ?? null} />
+        <div key={d.id || idx} className="pt-8">
+          <h3 className="text-lg font-medium pb-2">{d.title || `Document ${idx + 1}`}</h3>
+          <ContentTable content={d.content ?? null} />
+        </div>
       ))}
     </div>
   );

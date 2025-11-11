@@ -34,6 +34,7 @@ export default async function ProjectPage({
 
 	return (
 		<div className="wrapperx flex-col-center w-full font-jakarta">
+			
 			<div className="max-w-7xl w-full px-8 pt-2">
 			
 			<div className="flex items-center justify-between pb-0">
@@ -53,6 +54,7 @@ export default async function ProjectPage({
 			<QueryPlayground projectId={id} defaults={defaults} />
 			<ApiKeys projectId={id} />
 			</div>
+
 			</div>
 		</div>
 	);

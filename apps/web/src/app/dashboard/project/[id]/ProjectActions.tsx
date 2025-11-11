@@ -1,3 +1,4 @@
+// ProjectActions component
 "use client";
 
 import * as React from "react";
@@ -13,7 +14,9 @@ import {
 import ProjectFiles from "./ProjectFiles";
 import ApiKeys from "./ApiKeys";
 import ProjectSettings from "./ProjectSettings";
-import { UploadIcon, KeyIcon, SettingsIcon, PlayIcon } from "lucide-react";
+
+import YourFilesPanel from "./YourFilesPanel";
+import { UploadIcon, KeyIcon, SettingsIcon, PlayIcon, FileIcon } from "lucide-react";
 import { toast } from "sonner";
 
 type Project = {
@@ -74,6 +77,22 @@ export default function ProjectActions({
           </DialogContent>
         </Dialog>
 
+        {/* Your Files (moved to dialog) */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline"><FileIcon className="w-4 h-4 mr-1" /> Your Files</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Your Files</DialogTitle>
+              <DialogDescription>
+                View uploaded documents.
+              </DialogDescription>
+            </DialogHeader>
+            <YourFilesPanel projectId={projectId} />
+          </DialogContent>
+        </Dialog>
+
         {/* API Keys */}
         <Dialog>
           <DialogTrigger asChild>
@@ -89,6 +108,8 @@ export default function ProjectActions({
             <ApiKeys projectId={projectId} />
           </DialogContent>
         </Dialog>
+
+        
 
         {/* Project Settings */}
         <Dialog>

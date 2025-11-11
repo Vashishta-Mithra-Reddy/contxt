@@ -63,6 +63,10 @@ export function Dropzone({
   variant = "default",
   accept = {
     "application/json": [],
+    "text/csv": [],
+    "application/vnd.ms-excel": [],
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [],
+    "text/plain": [],
     // "application/msword": [],
     // "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     //   [],
