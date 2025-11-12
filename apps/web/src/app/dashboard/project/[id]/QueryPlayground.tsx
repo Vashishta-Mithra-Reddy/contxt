@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import LLMAnswerViewer from "@/components/data/LLMAnswerViewer";
 
 type ChunkContext = {
   id: string;
@@ -200,7 +201,8 @@ export default function QueryPlayground({
                 Copy
               </Button>
             </div>
-            <div className="rounded-md border p-3 text-sm whitespace-pre-wrap">{answer || "—"}</div>
+            {/* Render markdown answer beautifully */}
+            <LLMAnswerViewer content={answer || ""} />
           </div>
         )}
 

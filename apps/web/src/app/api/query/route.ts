@@ -114,7 +114,7 @@ async function generateAnswerWithGemini(
     .join("\n\n---\n");
 
   const prompt =
-    `You are a helpful assistant. Answer strictly from the provided context.\n` +
+    `You are a helpful assistant. Answer strictly from the provided context and always return simple, clean and proper, beautifully structured markdown.\n` +
     `If absent, say: "I don't know based on the provided context."\n\n` +
     `---BEGIN CONTEXT---\n${contextText}\n---END CONTEXT---\n\n` +
     `Question:\n${query}\n\nAnswer:`;
