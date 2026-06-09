@@ -16,7 +16,7 @@ export default function Footer() {
 				</div>
 			</div>
 			<div className="container mx-auto flex flex-col items-center justify-center gap-4 text-center text-muted-foreground/50 text-sm">
-				<p>&copy; {new Date().getFullYear()} <span className="font-nippo">contxt</span>. All rights reserved.<a href="https://v19.tech/?utm_source=contxt&utm_medium=referral&utm_campaign=built_by_v19" target="_blank" rel="noopener noreferrer" className="ml-1 text-inherit opacity-80 underline-offset-2 hover:underline">· Built by V19</a></p>
+				<p>&copy; {new Date().getFullYear()} <span className="font-nippo">contxt</span>. All rights reserved.<a href="https://v19.tech/?utm_source=contxt&utm_medium=referral&utm_campaign=built_by_v19" target="_blank" rel="noopener noreferrer" className="ml-1 text-inherit opacity-80 underline-offset-2 hover:underline">Built by V19</a></p>
 			</div>
 		</footer>
 	);
